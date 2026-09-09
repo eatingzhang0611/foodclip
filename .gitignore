@@ -1,8 +1,11 @@
+# 密钥与数据，绝不入库
 .env
-__pycache__/
-out/
+.env.*
+!.env.example
 shops.jsonl
-_eval.py
-_prompt_v2.py
-_verify.py
-_fix.py
+out/
+
+# 临时探索脚本，_ 前缀
+_*.py
+
+__pycache__/
