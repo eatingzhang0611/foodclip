@@ -2,3 +2,11 @@
 __pycache__/
 out/
 shops.jsonl
+_eval.py
+_prompt_v2.py
+_verify.py
+_anchor.py
+_dump.py
+_endpoints.py
+_ssr.py
+_fix.py
