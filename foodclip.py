@@ -338,9 +338,14 @@ def call_llm(sheets, desc="", city="", chapters=()):
     # （"`temperature` is deprecated for this model"），haiku 才收。
     # max_tokens 必须显式给：一条 20+ 家的攻略视频输出能到 7k+ token，
     # 走默认上限会被截断成半个 JSON，解析直接炸。
+    # reasoning_effort 也必须显式给：sonnet-5 自己决定要不要思考，任务一重就把整个
+    # max_tokens 烧在 thinking 上、一个正文 token 都不吐；而 sub2api 的 OpenAI 兼容层
+    # 不映射 thinking 块，返回的 message 连 content 键都没有（不是 content 为空，是键不存在）。
+    # 2026-09-23 踩过：in=51593 out=8192，然后 KeyError: 'content'。
     body = {
         "model": os.environ["LLM_MODEL"],
-        "max_tokens": 8192,
+        "max_tokens": 16384,
+        "reasoning_effort": "low",
         "messages": [{"role": "user", "content": [
             {"type": "text", "text": PROMPT + ctx},
             *[{"type": "image_url",
@@ -357,7 +362,15 @@ def call_llm(sheets, desc="", city="", chapters=()):
     u = resp.get("usage", {})
     print(f"· token: in={u.get('prompt_tokens', '?')} out={u.get('completion_tokens', '?')}",
           file=sys.stderr)
-    text = resp["choices"][0]["message"]["content"]
+    msg = resp["choices"][0]["message"]
+    if "content" not in msg:
+        # 兜底：万一 reasoning_effort 没拦住，报清楚是"只思考没输出"，
+        # 别再抛一个光秃秃的 KeyError 让人以为是网关挂了。
+        raise RuntimeError(
+            f"模型只思考没输出正文（finish_reason="
+            f"{resp['choices'][0].get('finish_reason')}，"
+            f"out={u.get('completion_tokens', '?')} token）")
+    text = msg["content"]
     return json.loads(re.search(r"\{.*\}", text, re.S).group(0))
 
 
